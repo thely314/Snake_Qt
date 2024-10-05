@@ -6,6 +6,7 @@
 #define BOARD_H
 
 #include <QObject>
+#include <QDebug>
 
 class Board : public QObject
 {

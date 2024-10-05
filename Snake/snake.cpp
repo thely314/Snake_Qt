@@ -1,4 +1,5 @@
 #include "snake.h"
+#include <qdebug.h>
 
 int SnakeSegment::getX() const
 {
@@ -17,11 +18,11 @@ Snake::Snake(QObject *parent)
 }
 
 Snake::Snake(int initialLength, const QPoint& startPos, QObject *parent)
-    : QObject{parent}, NowVector(0, 1)
+    : QObject{parent}, NowVector(1, 0)
 {
     for (int i = 0; i < initialLength; ++i)
     {
-        segments.push_back(SnakeSegment(startPos.x(), startPos.y() - i));
+        segments.push_back(SnakeSegment(startPos.x() - i, startPos.y()));
     }
 }
 
@@ -32,16 +33,14 @@ Snake::~Snake()
 
 void Snake::move(int newHeadX, int newHeadY)
 {
-    // Remove the tail segment
     segments.pop_back();
 
-    // Add a new head segment
     segments.insert(segments.begin(), SnakeSegment(newHeadX, newHeadY));
 }
 
 void Snake::grow()
 {
-    // Add a new head segment to simulate growth
+    // 添加体节
     SnakeSegment newHead = segments.front();
     segments.insert(segments.begin(), newHead);
 }
@@ -58,6 +57,22 @@ QPoint Snake::getNowVector()
 
 void Snake::setNowVector(int x, int y)
 {
+    try
+    {
+        if(x < -1 || x > 1)
+        {
+            throw std::runtime_error("unexcepted x");
+        }
+        if(y < -1 || y > 1)
+        {
+            throw std::runtime_error("unexcepted y");
+        }
+    }
+    catch(std::exception &e)
+    {
+        qDebug() << e.what() <<
+            " x: " << x << " y: " << y;
+    }
     NowVector.setX(x);
     NowVector.setY(y);
 }
@@ -72,6 +87,7 @@ void Snake::restart(int initialLength, const QPoint& startPos)
     segments.clear();
     for (int i = 0; i < initialLength; ++i)
     {
-        segments.push_back(SnakeSegment(startPos.x(), startPos.y() - i));
+        segments.push_back(SnakeSegment(startPos.x() - i, startPos.y()));
     }
+    setNowVector(1, 0);
 }

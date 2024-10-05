@@ -5,6 +5,8 @@
 #include <vector>
 #include <QPoint>
 
+#include <QDebug>
+
 class SnakeSegment
 {
 public:

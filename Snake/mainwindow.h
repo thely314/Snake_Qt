@@ -34,6 +34,8 @@ public:
     void gameOverMessage();
     QTimer* getTimer();
     void restartGame();
+    CustomBtn* getContinueBtn();
+    CustomBtn* getPauseBtn();
 
     int timeDelay = 0;
 

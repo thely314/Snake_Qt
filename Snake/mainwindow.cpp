@@ -60,6 +60,8 @@ MainWindow::MainWindow(int sc, QWidget *parent)
 
     // 返回上一级窗口
     connect(backBtn, &QPushButton::clicked, this, [=](){
+        restartGame();
+        getTimer()->stop();
         emit this->backBtnClick(nowScore>maxScore? nowScore:maxScore);
     });
 
@@ -95,24 +97,6 @@ MainWindow::MainWindow(int sc, QWidget *parent)
             if(player->getNowVector().x() == 0)
             {
                 player->setNowVector(
-                    player->getNowVector().x() - player->getNowVector().y(),
-                    0
-                    );
-            }
-            else
-            {
-                player->setNowVector(
-                    0,
-                    player->getNowVector().x() - player->getNowVector().y()
-                    );
-            }
-        }
-        // right
-        else if(value == 1)
-        {
-            if(player->getNowVector().x() == 0)
-            {
-                player->setNowVector(
                     player->getNowVector().y() - player->getNowVector().x(),
                     0
                     );
@@ -122,6 +106,24 @@ MainWindow::MainWindow(int sc, QWidget *parent)
                 player->setNowVector(
                     0,
                     player->getNowVector().y() - player->getNowVector().x()
+                    );
+            }
+        }
+        // right
+        else if(value == 1)
+        {
+            if(player->getNowVector().x() == 0)
+            {
+                player->setNowVector(
+                    player->getNowVector().x() - player->getNowVector().y(),
+                    0
+                    );
+            }
+            else
+            {
+                player->setNowVector(
+                    0,
+                    player->getNowVector().x() - player->getNowVector().y()
                     );
             }
         }
@@ -166,28 +168,22 @@ void MainWindow::generateNewFood(Board& board)
         x = rand() % board.getWidth();
         y = rand() % board.getHeight();
     }
-    while(board.getStateAt(x, y) != 0);
+    while(board.getStateAt(y, x) != 0);
     food->setX(x);
     food->setY(y);
 }
 
 void MainWindow::drawerUpdate()
 {
-    for(int i=0; i<gameBoard->getWidth(); i++)
-    {
-        for(int j=0; j<gameBoard->getHeight(); j++)
-        {
-            gameBoard->setStateAt(i, j, 0);
-        }
-    }
+    gameBoard->clearMap();
     for(auto p : player->getSegments())
     {
         int x = p.getX();
         int y = p.getY();
-        gameBoard->setStateAt(x, y, 1);
+        gameBoard->setStateAt(y, x, 1);
     }
-    gameBoard->setStateAt(player->getHead().getX(), player->getHead().getY(), 2);
-    gameBoard->setStateAt(food->x(), food->y(), 3);
+    gameBoard->setStateAt(player->getHead().getY(), player->getHead().getX(), 2);
+    gameBoard->setStateAt(food->y(), food->x(), 3);
     drawer->drawGameBoard(*gameBoard);
 }
 
@@ -202,15 +198,16 @@ void MainWindow::update()
     QPoint nowVec = player->getNowVector();
     QPoint tmpHead(player->getHead().getX(), player->getHead().getY());
 
+    // qDebug() << "head at x:" <<tmpHead.x() << " y: "<< tmpHead.y();
     // 失败判断
-    if(gameBoard->getStateAt(
-            tmpHead.x() + nowVec.x(), tmpHead.y() + nowVec.y()) == 1
+    if(tmpHead.x() + nowVec.x() < 0
+        || tmpHead.x() + nowVec.x() >= gameBoard->getWidth()
+        || tmpHead.y() + nowVec.y() < 0
+        || tmpHead.y() + nowVec.y() >= gameBoard->getHeight()
         || gameBoard->getStateAt(
-            tmpHead.x() + nowVec.x(), tmpHead.y() + nowVec.y()) == 2
-        || player->getHead().getX() < 0
-        || player->getHead().getX() >= gameBoard->getWidth()
-        || player->getHead().getY() < 0
-        || player->getHead().getY() >= gameBoard->getHeight())
+               tmpHead.y() + nowVec.y(), tmpHead.x() + nowVec.x()) == 1
+        || gameBoard->getStateAt(
+               tmpHead.y() + nowVec.y(), tmpHead.x() + nowVec.x()) == 2)
     {
         setGameOver(true);
         gameOverMessage();
@@ -222,13 +219,16 @@ void MainWindow::update()
 
     // 吃到食物
     if(gameBoard->getStateAt(
-            player->getHead().getX(), player->getHead().getY()) == 3)
+            player->getHead().getY(), player->getHead().getX()) == 3)
     {
         player->grow();
         nowScore += 50;
 
         food->setX(-1);
         food->setY(-1);
+    }
+    if(food->x() == -1 && food->y() == -1)
+    {
         generateNewFood(*gameBoard);
     }
 
@@ -252,14 +252,18 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
 {
     if(event->key() == Qt::Key_A)
     {
+        // right
         emit player->turn(-1);
     }
     else if(event->key() == Qt::Key_D)
     {
+        // left
         emit player->turn(1);
     }
     else if(event->key() == Qt::Key_B)
     {
+        restartGame();
+        getTimer()->stop();
         emit this->backBtnClick(nowScore>maxScore? nowScore:maxScore);
     }
     else if(event->key() == Qt::Key_R)
@@ -317,8 +321,31 @@ void MainWindow::restartGame()
     maxScore = maxScore>nowScore? maxScore:nowScore;
     nowScore = 0;
     maxScorelab->setText(QString::number(maxScore));
+
+    // 初始化
+    gameBoard->clearMap();
     player->restart(3, QPoint(17, 16));
+    food->setX(-1);
+    food->setY(-1);
+    timeDelay = 300;
     setGameOver(false);
     getTimer()->stop();
+
+    if(pauseBtn->isHidden())
+    {
+        getTimer()->start(timeDelay);
+        continueBtn->hide();
+        pauseBtn->show();
+    }
     getTimer()->start(timeDelay);
+}
+
+CustomBtn* MainWindow::getContinueBtn()
+{
+    return continueBtn;
+}
+
+CustomBtn* MainWindow::getPauseBtn()
+{
+    return pauseBtn;
 }

@@ -7,8 +7,9 @@ IntroWindow::IntroWindow(QWidget *parent)
     setFixedSize(800, 600);
 
     startBtn = new CustomBtn("开始\nSTART", this);
+    startBtn->setStyleSheet("font-size: 14px; color: green;");
     startBtn->resize(100, 50);
-    startBtn->move(200, 300);
+    startBtn->move(200, 325);
 
     maxScore =  readMaxScore();
     // 历史最大得分
@@ -16,13 +17,25 @@ IntroWindow::IntroWindow(QWidget *parent)
     scoreText->setAlignment(Qt::AlignCenter);
     scoreText->setStyleSheet("font-size: 16px; color: blue;");
     scoreText->resize(150, 50);
-    scoreText->move(325, 200);
+    scoreText->move(175, 125);
 
     maxScorelab = new QLabel(QString::number(maxScore), this);
     maxScorelab->setAlignment(Qt::AlignCenter);
     maxScorelab->setStyleSheet("font-size: 20px; color: blue;");
     maxScorelab->resize(150, 50);
-    maxScorelab->move(325, 250);
+    maxScorelab->move(175, 200);
+
+    // 操作说明
+    manual = new QLabel(
+        "操作声明\nManual\n\n"
+        "按A(或D)向左(右转向)\nPress A(or D) to turn\n"
+        "按B返回，按R重新开始，按P暂停\nPress B to go back, R to restart,\n P to pause\n"
+        "控制蛇吃到更多食物以取得更高分数\nControl the snake to gain\n more food for higher scores"
+        , this);
+    manual->setAlignment(Qt::AlignCenter);
+    manual->setStyleSheet("font-size: 14px; color: black;");
+    manual->resize(250, 200);
+    manual->move(425, 125);
 
     mainWinPtr = new MainWindow(maxScore);
     // 监听返回信号，处理
@@ -45,12 +58,15 @@ IntroWindow::IntroWindow(QWidget *parent)
             mainWinPtr->show();
             mainWinPtr->setGameOver(false);
             mainWinPtr->getTimer()->start(300);
+            mainWinPtr->getContinueBtn()->hide();
+            mainWinPtr->getPauseBtn()->show();
         });
     });
 
     exitBtn = new CustomBtn("退出\nEXIT", this);
+    exitBtn->setStyleSheet("font-size: 14px; color: red;");
     exitBtn->resize(100, 50);
-    exitBtn->move(500, 300);
+    exitBtn->move(500, 325);
     // 关闭窗口结束程序
     connect(exitBtn, &QPushButton::clicked, this, &MainWindow::close);
 }

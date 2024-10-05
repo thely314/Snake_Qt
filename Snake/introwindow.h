@@ -32,6 +32,7 @@ private:
     CustomBtn *exitBtn;
     QLabel *scoreText;
     QLabel *maxScorelab;
+    QLabel *manual;
 
     int maxScore;
 signals:
