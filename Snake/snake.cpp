@@ -20,7 +20,7 @@ Snake::Snake(QObject *parent)
 Snake::Snake(int initialLength, const QPoint& startPos, QObject *parent)
     : QObject{parent}, NowVector(1, 0)
 {
-    for (int i = 0; i < initialLength; ++i)
+    for(int i = 0; i < initialLength; ++i)
     {
         segments.push_back(SnakeSegment(startPos.x() - i, startPos.y()));
     }
@@ -85,7 +85,7 @@ SnakeSegment Snake::getHead()
 void Snake::restart(int initialLength, const QPoint& startPos)
 {
     segments.clear();
-    for (int i = 0; i < initialLength; ++i)
+    for(int i = 0; i < initialLength; ++i)
     {
         segments.push_back(SnakeSegment(startPos.x() - i, startPos.y()));
     }

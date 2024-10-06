@@ -4,37 +4,51 @@
 MainWindow::MainWindow(int sc, QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow), maxScore(sc), nowScore(0),
-    gameOver(true), food(nullptr), timeDelay(300)
+    gameOver(true), foods(nullptr), obsList(nullptr), timeDelay(300),
+    foodScore(10), obstacleUpdateDelay(100), obstacleUpdateTimer(0)
 {
     setWindowTitle("Snake!");
     setFixedSize(800, 600);
     ui->setupUi(this);
 
     // 历史最大得分
-    maxTitlelab = new QLabel("最大得分\nMax Score", this);
-    maxTitlelab->setAlignment(Qt::AlignCenter);
-    maxTitlelab->setStyleSheet("font-size: 16px; color: black;");
-    maxTitlelab->resize(120, 50);
-    maxTitlelab->move(670, 100);
+    maxTitleLab = new QLabel("最大得分\nMax Score", this);
+    maxTitleLab->setAlignment(Qt::AlignCenter);
+    maxTitleLab->setStyleSheet("font-size: 16px; color: black;");
+    maxTitleLab->resize(120, 50);
+    maxTitleLab->move(670, 100);
 
-    maxScorelab = new QLabel(QString::number(maxScore), this);
-    maxScorelab->setAlignment(Qt::AlignRight);
-    maxScorelab->setStyleSheet("font-size: 22px; color: blue;");
-    maxScorelab->resize(100, 50);
-    maxScorelab->move(670, 150);
+    maxScoreLab = new QLabel(QString::number(maxScore), this);
+    maxScoreLab->setAlignment(Qt::AlignRight);
+    maxScoreLab->setStyleSheet("font-size: 22px; color: blue;");
+    maxScoreLab->resize(100, 50);
+    maxScoreLab->move(670, 150);
 
     // 目前得分
-    nowTitlelab = new QLabel("目前分数\nNow Score", this);
-    nowTitlelab->setAlignment(Qt::AlignCenter);
-    nowTitlelab->setStyleSheet("font-size: 16px; color: black;");
-    nowTitlelab->resize(120, 50);
-    nowTitlelab->move(670, 200);
+    nowTitleLab = new QLabel("目前分数\nNow Score", this);
+    nowTitleLab->setAlignment(Qt::AlignCenter);
+    nowTitleLab->setStyleSheet("font-size: 16px; color: black;");
+    nowTitleLab->resize(120, 50);
+    nowTitleLab->move(670, 200);
 
-    nowScorelab = new QLabel(QString::number(nowScore), this);
-    nowScorelab->setAlignment(Qt::AlignRight);
-    nowScorelab->setStyleSheet("font-size: 22px; color: blue;");
-    nowScorelab->resize(100, 50);
-    nowScorelab->move(670, 250);
+    nowScoreLab = new QLabel(QString::number(nowScore), this);
+    nowScoreLab->setAlignment(Qt::AlignRight);
+    nowScoreLab->setStyleSheet("font-size: 22px; color: blue;");
+    nowScoreLab->resize(100, 50);
+    nowScoreLab->move(670, 250);
+
+    // 障碍刷新倒计时
+    obsCountdownTitleLab = new QLabel("障碍物刷新倒计时:\nObstacle update\ncountdown:", this);
+    obsCountdownTitleLab->setAlignment(Qt::AlignRight);
+    obsCountdownTitleLab->setStyleSheet("font-size: 12px; color: red;");
+    obsCountdownTitleLab->resize(100, 50);
+    obsCountdownTitleLab->move(670, 300);
+
+    obsUpdateCountdownLab = new QLabel(QString::number(obstacleUpdateDelay - obstacleUpdateTimer), this);
+    obsUpdateCountdownLab->setAlignment(Qt::AlignRight);
+    obsUpdateCountdownLab->setStyleSheet("font-size: 18px; color: red;");
+    obsUpdateCountdownLab->resize(80, 50);
+    obsUpdateCountdownLab->move(670, 350);
 
     // 按钮组件
     backBtn = new CustomBtn("返回\nBack\n(B)", this);
@@ -45,17 +59,17 @@ MainWindow::MainWindow(int sc, QWidget *parent)
     restartBtn = new CustomBtn("重新开始\nRestart\n(R)", this);
     restartBtn->setStyleSheet("font-size: 12px;");
     restartBtn->resize(100, 50);
-    restartBtn->move(680, 350);
+    restartBtn->move(680, 400);
 
     pauseBtn = new CustomBtn("暂停\nPause\n(P)", this);
     pauseBtn->setStyleSheet("font-size: 12px;");
     pauseBtn->resize(100, 50);
-    pauseBtn->move(680, 450);
+    pauseBtn->move(680, 500);
 
     continueBtn = new CustomBtn("继续\nContinue\n(P)", this);
     continueBtn->setStyleSheet("font-size: 12px;");
     continueBtn->resize(100, 50);
-    continueBtn->move(680, 450);
+    continueBtn->move(680, 500);
     continueBtn->hide();
 
     // 返回上一级窗口
@@ -89,6 +103,7 @@ MainWindow::MainWindow(int sc, QWidget *parent)
     connect(gameLoopTimer, &QTimer::timeout, this, &MainWindow::update);
 
     player = new Snake(3, QPoint(17, 16), this);
+    enemy = new Snake(4, QPoint(3, 3), this);
     // 按键响应
     connect(player, &Snake::turn, this, [=](int value){
         // left
@@ -135,8 +150,11 @@ MainWindow::MainWindow(int sc, QWidget *parent)
     drawer->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     drawer->resize(660, 580);
     drawer->move(10, 10);
-    food = new QPoint(-1, -1);
+
+    foods = new FoodManager(2, this);
     generateNewFood(*gameBoard);
+    obsList = new ObstacleManager(10, this);
+    generateNewObs(*gameBoard);
     drawerUpdate();
 }
 
@@ -156,34 +174,78 @@ void MainWindow::setGameOver(bool s)
     gameOver = s;
 }
 
+// 食物刷新
 void MainWindow::generateNewFood(Board& board)
 {
-    if(food->x() != -1 && food->y() != -1)
+    for(auto& food : foods->getfoodList())
     {
-        return;
+        if(food.getX() != -1 && food.getY() != -1)
+        {
+            continue;
+        }
+        int x = 0, y = 0;
+        do
+        {
+            x = rand() % board.getWidth();
+            y = rand() % board.getHeight();
+        }
+        while(board.getStateAt(y, x) != 0);
+        food.setX(x);
+        food.setY(y);
     }
-    int x = 0, y = 0;
-    do
+}
+
+// 障碍刷新
+void MainWindow::generateNewObs(Board& board)
+{
+    for(auto& obs : obsList->getObstacleList())
     {
-        x = rand() % board.getWidth();
-        y = rand() % board.getHeight();
+        if(obs.getX() != -1 && obs.getY() != -1)
+        {
+            continue;
+        }
+        int x = 0, y = 0;
+        do
+        {
+            x = rand() % board.getWidth();
+            y = rand() % board.getHeight();
+        }
+        while(board.getStateAt(y, x) != 0);
+        obs.setX(x);
+        obs.setY(y);
     }
-    while(board.getStateAt(y, x) != 0);
-    food->setX(x);
-    food->setY(y);
+}
+
+void MainWindow::resetObsUpdateTimer()
+{
+    obstacleUpdateTimer = 0;
 }
 
 void MainWindow::drawerUpdate()
 {
     gameBoard->clearMap();
-    for(auto p : player->getSegments())
+
+    for(auto& p : player->getSegments())
     {
-        int x = p.getX();
-        int y = p.getY();
-        gameBoard->setStateAt(y, x, 1);
+        gameBoard->setStateAt(p.getY(), p.getX(), 1);
     }
     gameBoard->setStateAt(player->getHead().getY(), player->getHead().getX(), 2);
-    gameBoard->setStateAt(food->y(), food->x(), 3);
+
+    for(auto& food : foods->getfoodList())
+    {
+        gameBoard->setStateAt(food.getY(), food.getX(), 3);
+    }
+    for(auto& obs : obsList->getObstacleList())
+    {
+        gameBoard->setStateAt(obs.getY(), obs.getX(), 4);
+    }
+
+    for(auto& e : enemy->getSegments())
+    {
+        gameBoard->setStateAt(e.getY(), e.getX(), 5);
+    }
+    gameBoard->setStateAt(enemy->getHead().getY(), enemy->getHead().getX(), 6);
+
     drawer->drawGameBoard(*gameBoard);
 }
 
@@ -198,6 +260,17 @@ void MainWindow::update()
     QPoint nowVec = player->getNowVector();
     QPoint tmpHead(player->getHead().getX(), player->getHead().getY());
 
+    int enemyDesX = (enemy->getHead().getX() + enemy->getNowVector().x()) % gameBoard->getWidth();
+    int enemyDesY = (enemy->getHead().getY() + enemy->getNowVector().y()) % gameBoard->getHeight();
+    if(enemyDesX < 0)
+    {
+        enemyDesX = gameBoard->getWidth() - 1;
+    }
+    if(enemyDesY < 0)
+    {
+        enemyDesY = gameBoard->getHeight() - 1;
+    }
+
     // qDebug() << "head at x:" <<tmpHead.x() << " y: "<< tmpHead.y();
     // 失败判断
     if(tmpHead.x() + nowVec.x() < 0
@@ -207,43 +280,75 @@ void MainWindow::update()
         || gameBoard->getStateAt(
                tmpHead.y() + nowVec.y(), tmpHead.x() + nowVec.x()) == 1
         || gameBoard->getStateAt(
-               tmpHead.y() + nowVec.y(), tmpHead.x() + nowVec.x()) == 2)
+               tmpHead.y() + nowVec.y(), tmpHead.x() + nowVec.x()) == 2
+        || gameBoard->getStateAt(
+               tmpHead.y() + nowVec.y(), tmpHead.x() + nowVec.x()) == 4
+        || gameBoard->getStateAt(
+               tmpHead.y() + nowVec.y(), tmpHead.x() + nowVec.x()) == 5
+        || gameBoard->getStateAt(
+               tmpHead.y() + nowVec.y(), tmpHead.x() + nowVec.x()) == 6
+        || gameBoard->getStateAt(
+               enemyDesY, enemyDesX) == 1
+        || gameBoard->getStateAt(
+               enemyDesY, enemyDesX) == 2)
     {
         setGameOver(true);
         gameOverMessage();
         return;
     }
 
+    // 移动
     player->move(tmpHead.x() + nowVec.x(), tmpHead.y() + nowVec.y());
     nowScore++;
+
+    enemy->move(enemyDesX, enemyDesY);
 
     // 吃到食物
     if(gameBoard->getStateAt(
             player->getHead().getY(), player->getHead().getX()) == 3)
     {
         player->grow();
-        nowScore += 50;
+        nowScore += foodScore;
 
-        food->setX(-1);
-        food->setY(-1);
+        for(auto& food : foods->getfoodList())
+        {
+            if(player->getHead().getY() == food.getY()
+                && player->getHead().getX() == food.getX())
+            {
+                food.setX(-1);
+                food.setY(-1);
+                break;
+            }
+        }
     }
-    if(food->x() == -1 && food->y() == -1)
+
+    // 食物刷新调用
+    generateNewFood(*gameBoard);
+
+    // 障碍定时刷新
+    obstacleUpdateTimer++;
+    obsUpdateCountdownLab->setText(QString::number(obstacleUpdateDelay - obstacleUpdateTimer));
+    if(obstacleUpdateTimer >= obstacleUpdateDelay)
     {
-        generateNewFood(*gameBoard);
+        resetObsUpdateTimer();
+        obsList->resetObstacleList(10);
+        generateNewObs(*gameBoard);
     }
 
     // 加速
     if(nowScore > 200 && nowScore <= 500)
     {
         timeDelay = 200;
+        foodScore = 15;
     }
     else if(nowScore > 500)
     {
         timeDelay = 120;
+        foodScore = 20;
     }
 
     // 分数显示更新
-    nowScorelab->setText(QString::number(nowScore));
+    nowScoreLab->setText(QString::number(nowScore));
     drawerUpdate();
     gameLoopTimer->start(timeDelay);
 }
@@ -320,14 +425,18 @@ void MainWindow::restartGame()
 {
     maxScore = maxScore>nowScore? maxScore:nowScore;
     nowScore = 0;
-    maxScorelab->setText(QString::number(maxScore));
+    maxScoreLab->setText(QString::number(maxScore));
 
     // 初始化
     gameBoard->clearMap();
     player->restart(3, QPoint(17, 16));
-    food->setX(-1);
-    food->setY(-1);
+    foods->resetFoodList();
+    obsList->resetObstacleList(10);
+    generateNewObs(*gameBoard);
+    enemy->restart(4, QPoint(3, 3));
+    resetObsUpdateTimer();
     timeDelay = 300;
+    foodScore = 10;
     setGameOver(false);
     getTimer()->stop();
 

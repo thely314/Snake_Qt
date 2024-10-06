@@ -24,19 +24,35 @@ void GameBoardView::drawGameBoard(const Board& board)
 
             if (value == 0)
             {
-                rect->setBrush(Qt::black); // empty
+                rect->setBrush(Qt::black); // 空empty
             }
             else if (value == 1)
             {
-                rect->setBrush(Qt::green); // snake segment
+                rect->setBrush(Qt::green); // 蛇身snake segment
             }
             else if (value == 2)
             {
-                rect->setBrush(Qt::blue); // snake head
+                rect->setBrush(Qt::blue); // 蛇头snake head
             }
             else if (value == 3)
             {
-                rect->setBrush(Qt::red); // food item
+                rect->setBrush(Qt::red); // 食物food
+            }
+            else if (value == 4)
+            {
+                rect->setBrush(Qt::darkYellow); //  障碍obstacle
+            }
+            else if (value == 5)
+            {
+                rect->setBrush(QBrush(QColor(255, 128, 0))); // 敌对蛇身enemy snake body
+            }
+            else if (value == 6)
+            {
+                rect->setBrush(Qt::yellow); //  敌对蛇头enemy snake head
+            }
+            else
+            {
+                rect->setBrush(Qt::black);
             }
         }
     }

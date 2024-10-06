@@ -11,6 +11,8 @@
 #include "CustomBtn.h"
 #include "snake.h"
 #include "gameboardview.h"
+#include "foodManager.h"
+#include "ObstacleManager.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -30,14 +32,14 @@ public:
     void update();
     void keyPressEvent(QKeyEvent *event) override;
     void generateNewFood(Board& board);
+    void generateNewObs(Board& board);
     void drawerUpdate();
     void gameOverMessage();
+
     QTimer* getTimer();
     void restartGame();
     CustomBtn* getContinueBtn();
     CustomBtn* getPauseBtn();
-
-    int timeDelay = 0;
 
 private:
     Ui::MainWindow *ui;
@@ -46,19 +48,30 @@ private:
     CustomBtn *pauseBtn;
     CustomBtn *continueBtn;
 
-    QLabel *maxTitlelab;
-    QLabel *maxScorelab;
-    QLabel *nowTitlelab;
-    QLabel *nowScorelab;
+    QLabel *maxTitleLab;
+    QLabel *maxScoreLab;
+    QLabel *nowTitleLab;
+    QLabel *nowScoreLab;
+    QLabel *obsCountdownTitleLab;
+    QLabel *obsUpdateCountdownLab;
 
     int maxScore;
     int nowScore;
     QTimer *gameLoopTimer;
     bool gameOver;
     Snake *player;
+    Snake *enemy;
     Board *gameBoard;
     GameBoardView *drawer;
-    QPoint *food;
+
+    int timeDelay = 0;
+    int foodScore = 0;
+
+    FoodManager *foods;
+    ObstacleManager *obsList;
+    int obstacleUpdateDelay;
+    int obstacleUpdateTimer;
+    void resetObsUpdateTimer();
 signals:
     void backBtnClick(int newMaxScore);
 };

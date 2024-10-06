@@ -1,10 +1,15 @@
+#ifndef QPoint
+#include <QPoint>
+#endif
+
+#ifndef vector
+#include <vector>
+#endif
+
 #ifndef SNAKE_H
 #define SNAKE_H
 
 #include <QObject>
-#include <vector>
-#include <QPoint>
-
 #include <QDebug>
 
 class SnakeSegment

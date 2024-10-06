@@ -33,6 +33,7 @@ private:
     QLabel *scoreText;
     QLabel *maxScorelab;
     QLabel *manual;
+    QLabel *signal;
 
     int maxScore;
 signals:
