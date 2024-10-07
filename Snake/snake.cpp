@@ -22,7 +22,7 @@ Snake::Snake(int initialLength, const QPoint& startPos, QObject *parent)
 {
     for(int i = 0; i < initialLength; ++i)
     {
-        segments.push_back(SnakeSegment(startPos.x() - i, startPos.y()));
+        segments.push_back(SnakeSegment(startPos.x(), startPos.y()));
     }
 }
 
@@ -45,7 +45,7 @@ void Snake::grow()
     segments.insert(segments.begin(), newHead);
 }
 
-const std::vector<SnakeSegment>& Snake::getSegments() const
+std::vector<SnakeSegment>& Snake::getSegments()
 {
     return segments;
 }
@@ -87,7 +87,7 @@ void Snake::restart(int initialLength, const QPoint& startPos)
     segments.clear();
     for(int i = 0; i < initialLength; ++i)
     {
-        segments.push_back(SnakeSegment(startPos.x() - i, startPos.y()));
+        segments.push_back(SnakeSegment(startPos.x(), startPos.y()));
     }
     setNowVector(1, 0);
 }

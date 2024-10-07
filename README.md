@@ -16,4 +16,9 @@ height 580 = 29*20
 ```
 
 添加了敌人，暂未完成行动逻辑
+
 Added enemies, the action logic is not yet completed
+
+A star算法遇到问题
+
+A star algorithm encountered a problem

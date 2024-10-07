@@ -33,7 +33,7 @@ public:
 
     void move(int newHeadX, int newHeadY);
     void grow();
-    const std::vector<SnakeSegment>& getSegments() const;
+    std::vector<SnakeSegment>& getSegments();
     QPoint getNowVector();
     void setNowVector(int x, int y);
     SnakeSegment getHead();

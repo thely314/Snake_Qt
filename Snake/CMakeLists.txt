@@ -30,6 +30,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         introwindow.h introwindow.cpp
         foodManager.h foodManager.cpp
         obstacleManager.h obstacleManager.cpp
+        enemysnake.h enemysnake.cpp
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET Snake APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR

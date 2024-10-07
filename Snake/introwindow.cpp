@@ -75,6 +75,7 @@ IntroWindow::IntroWindow(QWidget *parent)
             mainWinPtr->show();
             mainWinPtr->setGameOver(false);
             mainWinPtr->getTimer()->start(300);
+            //mainWinPtr->setAstarTimer()->start(3000);
             mainWinPtr->getContinueBtn()->hide();
             mainWinPtr->getPauseBtn()->show();
         });

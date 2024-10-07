@@ -5,7 +5,7 @@ MainWindow::MainWindow(int sc, QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow), maxScore(sc), nowScore(0),
     gameOver(true), foods(nullptr), obsList(nullptr), timeDelay(300),
-    foodScore(10), obstacleUpdateDelay(100), obstacleUpdateTimer(0)
+    foodScore(10), obstacleUpdateDelay(100), obstacleUpdateTimer(0), AstarTimer(nullptr)
 {
     setWindowTitle("Snake!");
     setFixedSize(800, 600);
@@ -76,6 +76,7 @@ MainWindow::MainWindow(int sc, QWidget *parent)
     connect(backBtn, &QPushButton::clicked, this, [=](){
         restartGame();
         getTimer()->stop();
+        // setAstarTimer()->stop();
         emit this->backBtnClick(nowScore>maxScore? nowScore:maxScore);
     });
 
@@ -87,6 +88,7 @@ MainWindow::MainWindow(int sc, QWidget *parent)
     // 暂停
     connect(pauseBtn, &QPushButton::clicked, this, [=](){
         getTimer()->stop();
+        // setAstarTimer()->stop();
         pauseBtn->hide();
         continueBtn->show();
     });
@@ -94,6 +96,7 @@ MainWindow::MainWindow(int sc, QWidget *parent)
     // 继续
     connect(continueBtn, &QPushButton::clicked, this, [=](){
         getTimer()->start(timeDelay);
+        // setAstarTimer()->start(timeDelay * 10);
         continueBtn->hide();
         pauseBtn->show();
     });
@@ -102,8 +105,9 @@ MainWindow::MainWindow(int sc, QWidget *parent)
     gameLoopTimer = new QTimer(this);
     connect(gameLoopTimer, &QTimer::timeout, this, &MainWindow::update);
 
+    // 玩家初始化
     player = new Snake(3, QPoint(17, 16), this);
-    enemy = new Snake(4, QPoint(3, 3), this);
+
     // 按键响应
     connect(player, &Snake::turn, this, [=](int value){
         // left
@@ -144,6 +148,28 @@ MainWindow::MainWindow(int sc, QWidget *parent)
         }
     });
 
+    // 敌人初始化
+    enemy = new EnemySnake(4, QPoint(3, 3), this);
+
+    // 敌人寻路
+    /*
+    AstarTimer = new QTimer(this);
+    connect(AstarTimer, &QTimer::timeout, this, [=](){
+        qDebug() << "Astar thinking...";
+        enemy->pathThinking(*gameBoard, QPoint(enemy->getHead().getX(), enemy->getHead().getY()));
+        // setAstarTimer()->start(timeDelay * 10);
+    });
+    */
+
+    connect(enemy, &EnemySnake::operate, this, [=](QPoint operate){
+        if(operate.x() == -1 || operate.y() == -1)
+        {
+            return;
+        }
+        enemy->setNowVector(operate.x(), operate.y());
+        qDebug() << "changed direction: " << enemy->getNowVector().x() << ", " << enemy->getNowVector().y();
+    });
+
     gameBoard = new Board(33, 29, this);
     drawer = new GameBoardView(this);
     drawer->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -155,7 +181,8 @@ MainWindow::MainWindow(int sc, QWidget *parent)
     generateNewFood(*gameBoard);
     obsList = new ObstacleManager(10, this);
     generateNewObs(*gameBoard);
-    drawerUpdate();
+    boardUpdate();
+    drawer->drawGameBoard(*gameBoard);
 }
 
 MainWindow::~MainWindow()
@@ -221,7 +248,7 @@ void MainWindow::resetObsUpdateTimer()
     obstacleUpdateTimer = 0;
 }
 
-void MainWindow::drawerUpdate()
+void MainWindow::boardUpdate()
 {
     gameBoard->clearMap();
 
@@ -246,7 +273,7 @@ void MainWindow::drawerUpdate()
     }
     gameBoard->setStateAt(enemy->getHead().getY(), enemy->getHead().getX(), 6);
 
-    drawer->drawGameBoard(*gameBoard);
+    emit enemy->enemyMoved();
 }
 
 void MainWindow::update()
@@ -254,22 +281,16 @@ void MainWindow::update()
     if (isGameOver())
     {
         gameLoopTimer->stop();
+        // AstarTimer->stop();
         return;
     }
+    // qDebug() << setAstarTimer()->remainingTime() << " left";
 
     QPoint nowVec = player->getNowVector();
     QPoint tmpHead(player->getHead().getX(), player->getHead().getY());
 
-    int enemyDesX = (enemy->getHead().getX() + enemy->getNowVector().x()) % gameBoard->getWidth();
-    int enemyDesY = (enemy->getHead().getY() + enemy->getNowVector().y()) % gameBoard->getHeight();
-    if(enemyDesX < 0)
-    {
-        enemyDesX = gameBoard->getWidth() - 1;
-    }
-    if(enemyDesY < 0)
-    {
-        enemyDesY = gameBoard->getHeight() - 1;
-    }
+    int enemyDesX = (enemy->getHead().getX() + enemy->getNowVector().x());
+    int enemyDesY = (enemy->getHead().getY() + enemy->getNowVector().y());
 
     // qDebug() << "head at x:" <<tmpHead.x() << " y: "<< tmpHead.y();
     // 失败判断
@@ -286,24 +307,46 @@ void MainWindow::update()
         || gameBoard->getStateAt(
                tmpHead.y() + nowVec.y(), tmpHead.x() + nowVec.x()) == 5
         || gameBoard->getStateAt(
-               tmpHead.y() + nowVec.y(), tmpHead.x() + nowVec.x()) == 6
-        || gameBoard->getStateAt(
-               enemyDesY, enemyDesX) == 1
-        || gameBoard->getStateAt(
-               enemyDesY, enemyDesX) == 2)
+               tmpHead.y() + nowVec.y(), tmpHead.x() + nowVec.x()) == 6)
     {
         setGameOver(true);
         gameOverMessage();
         return;
     }
 
+    // 敌人死亡
+    if(enemyDesX < 0
+        || enemyDesX >= gameBoard->getWidth()
+        || enemyDesY < 0
+        || enemyDesY >= gameBoard->getHeight()
+        || gameBoard->getStateAt(enemyDesY, enemyDesX) == 1
+        || gameBoard->getStateAt(enemyDesY, enemyDesX) == 2
+        || gameBoard->getStateAt(enemyDesY, enemyDesX) == 4
+        || gameBoard->getStateAt(enemyDesY, enemyDesX) == 5
+        || gameBoard->getStateAt(enemyDesY, enemyDesX) == 6)
+    {
+        int x = 0, y = 0;
+        do
+        {
+            x = rand() % (gameBoard->getWidth() - 1);
+            y = rand() % gameBoard->getHeight();
+        }
+        while(gameBoard->getStateAt(y, x) != 0 || gameBoard->getStateAt(y, x + 1) != 0);
+        enemy->restart(4, QPoint(x, y));
+        enemyDesX = (enemy->getHead().getX() + enemy->getNowVector().x());
+        enemyDesY = (enemy->getHead().getY() + enemy->getNowVector().y());
+    }
+
     // 移动
     player->move(tmpHead.x() + nowVec.x(), tmpHead.y() + nowVec.y());
-    nowScore++;
 
+    // 敌人寻路 临时占位
+    enemy->pathThinking(*gameBoard, QPoint(enemy->getHead().getX(), enemy->getHead().getY()));
     enemy->move(enemyDesX, enemyDesY);
 
-    // 吃到食物
+    nowScore++;
+
+    // 玩家吃到食物
     if(gameBoard->getStateAt(
             player->getHead().getY(), player->getHead().getX()) == 3)
     {
@@ -314,6 +357,24 @@ void MainWindow::update()
         {
             if(player->getHead().getY() == food.getY()
                 && player->getHead().getX() == food.getX())
+            {
+                food.setX(-1);
+                food.setY(-1);
+                break;
+            }
+        }
+    }
+
+    // 敌人吃到食物
+    if(gameBoard->getStateAt(
+            enemy->getHead().getY(), enemy->getHead().getX()) == 3)
+    {
+        enemy->grow();
+
+        for(auto& food : foods->getfoodList())
+        {
+            if(enemy->getHead().getY() == food.getY()
+                && enemy->getHead().getX() == food.getX())
             {
                 food.setX(-1);
                 food.setY(-1);
@@ -349,7 +410,8 @@ void MainWindow::update()
 
     // 分数显示更新
     nowScoreLab->setText(QString::number(nowScore));
-    drawerUpdate();
+    boardUpdate();
+    drawer->drawGameBoard(*gameBoard);
     gameLoopTimer->start(timeDelay);
 }
 
@@ -369,6 +431,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
     {
         restartGame();
         getTimer()->stop();
+        // setAstarTimer()->stop();
         emit this->backBtnClick(nowScore>maxScore? nowScore:maxScore);
     }
     else if(event->key() == Qt::Key_R)
@@ -380,12 +443,14 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
         if(pauseBtn->isHidden())
         {
             getTimer()->start(timeDelay);
+            // setAstarTimer()->start(timeDelay * 10);
             continueBtn->hide();
             pauseBtn->show();
         }
         else
         {
             getTimer()->stop();
+            // setAstarTimer()->stop();
             pauseBtn->hide();
             continueBtn->show();
         }
@@ -407,6 +472,7 @@ void MainWindow::gameOverMessage()
     {
         restartGame();
         getTimer()->stop();
+        // setAstarTimer()->stop();
         emit this->backBtnClick(nowScore>maxScore? nowScore:maxScore);
     }
     else
@@ -419,6 +485,11 @@ void MainWindow::gameOverMessage()
 QTimer* MainWindow::getTimer()
 {
     return gameLoopTimer;
+}
+
+QTimer* MainWindow::setAstarTimer()
+{
+    return AstarTimer;
 }
 
 void MainWindow::restartGame()
@@ -439,14 +510,17 @@ void MainWindow::restartGame()
     foodScore = 10;
     setGameOver(false);
     getTimer()->stop();
+    // setAstarTimer()->stop();
 
     if(pauseBtn->isHidden())
     {
         getTimer()->start(timeDelay);
+        // setAstarTimer()->start(timeDelay * 10);
         continueBtn->hide();
         pauseBtn->show();
     }
     getTimer()->start(timeDelay);
+    // setAstarTimer()->start(timeDelay * 10);
 }
 
 CustomBtn* MainWindow::getContinueBtn()
