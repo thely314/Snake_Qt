@@ -38,7 +38,6 @@ public:
     void gameOverMessage();
 
     QTimer* getTimer();
-    QTimer* setAstarTimer();
     void restartGame();
     CustomBtn* getContinueBtn();
     CustomBtn* getPauseBtn();
@@ -60,7 +59,6 @@ private:
     int maxScore;
     int nowScore;
     QTimer *gameLoopTimer;
-    QTimer *AstarTimer;
     bool gameOver;
     Snake *player;
     EnemySnake *enemy;
