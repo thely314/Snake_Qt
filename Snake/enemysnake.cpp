@@ -123,6 +123,10 @@ void EnemySnake::Astar(Board& m_board, QPoint m_start, QPoint m_target)
                 {
                     newCost += 10;
                 }
+                else if(m_board.getStateAt(newY, newX) == 4)
+                {
+                    newCost += 5;
+                }
                 int newH = heuristicCostCalculate(QPoint(newX, newY), m_target);
                 Node newNode(QPoint(newX, newY), currentNode.position,
                              newCost, newH);
